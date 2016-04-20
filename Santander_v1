@@ -19,7 +19,7 @@ getwd()
 # Importing data into R
 
 train <- read.csv("train.csv")
-test <- read.csv("test.csv")
+predict <- read.csv("test.csv")
 sample_submission <- read.csv("sample_submission.csv")
 
 # price quotes from our suppliers
@@ -39,21 +39,19 @@ colnameskeep_initial <- colnames(train[,(colnames(train) %in% colnames(test))])
 colnameskeep_initial <- c(colnameskeep_initial,"TARGET")
 train = train[,colnameskeep_initial]
 
-smp_size_1 <- floor(0.8 * nrow(data[which(data$FLAG == 1),]))
-smp_size_0 <- floor(0.8 * nrow(data[which(data$FLAG == 0),]))
+smp_size_1 <- floor(0.7 * nrow(train[which(train$TARGET == 1),]))
+smp_size_0 <- floor(0.7 * nrow(train[which(train$TARGET == 0),]))
 
 ## set the seed to make your partition reproductible
 set.seed(123)
-train_ind_1 <- sample(which(data$FLAG == 1), size = smp_size_1)
-train_ind_0 <- sample(which(data$FLAG == 0), size = smp_size_0)
+train_ind_1 <- sample(which(train$FLAG == 1), size = smp_size_1)
+train_ind_0 <- sample(which(train$FLAG == 0), size = smp_size_0)
 train_ind <- c(train_ind_1,train_ind_0)
 
-test_ind_1 <- which(data$FLAG == 1)[!which(data$FLAG == 1) %in% train_ind_1]
-test_ind_0 <- which(data$FLAG == 0)[!which(data$FLAG == 0) %in% train_ind_0]
+test_ind_1 <- which(train$FLAG == 1)[!which(train$FLAG == 1) %in% train_ind_1]
+test_ind_0 <- which(train$FLAG == 0)[!which(train$FLAG == 0) %in% train_ind_0]
 test_ind <- c(test_ind_1,test_ind_0)
 
-#View(data[test_ind_1,])
-#View(data[train_ind_1,])
 train <- data[train_ind, ]
 test <- data[test_ind, ]
 
