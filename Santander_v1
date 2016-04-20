@@ -1,0 +1,141 @@
+
+library ("ROCR")
+library ("PresenceAbsence")
+library("randomForest")
+library("rms")
+library("XLConnect")
+library ("plyr")
+library("RODBC")
+library(plyr)
+require(gbm)
+require(caret)
+
+####################################### Load data, understanding, DQ
+
+# setwd("C://Users//dilip.patel//Documents//GitHub//Kaggle-Caterpillar-Tube-Pricing//Data")
+
+setwd("/Users/dilip.patel/Google Drive/Learning/Analytics/Kaggle/Santander_Classification")
+
+getwd()
+
+#system("ls -al")
+#files <- system("ls", intern = TRUE)
+
+Sys.info()
+list.files("../data")
+ls()
+#list.files(file.path("..", "data"))
+
+# Importing data into R
+
+train <- read.csv("train.csv")
+test <- read.csv("test.csv")
+sample_submission <- read.csv("sample_submission.csv")
+
+# price quotes from our suppliers
+str(train)
+head(train,-10)
+summary(train)
+colnames(train)
+
+str(test)
+head(test,10)
+summary(test)
+colnames(test)
+
+str(sample_submission)
+
+#Tube dimentions
+summary(tube)
+# list of components, and their quantities, used on each tube assembly
+summary(bom)
+# list of unique specifications (materials, processes, rust protectio) for the tube assembly
+summary(specs)
+head(specs)
+
+####################################### Preparing Training Data
+
+colnameskeep_initial <- colnames(train[,(colnames(train) %in% colnames(test))])
+train = train[,colnameskeep_initial]
+
+####################################### Training Model
+
+RFmodel.rf <- randomForest(TARGET ~ .,data = train,
+                           importance=TRUE,
+                           #mtry=30, # # of variables (default sqrt(p))
+                           #proximity=TRUE,
+                           ntree=201,
+                           #nodesize=5, #Min # of observations (default 1) - do CV
+                           #maxnodes=15, # Maximum number of terminal nodes trees (default max possible)
+                           type="classification", 
+                           #xtest=xtesttree, ytest=ytesttree, 
+                           #sampsize = c(250,250),
+                           keep.forest=TRUE)
+
+
+round(head(RFmodel.rf$err.rate,202),4)  	# look at the error rate
+min.err <- min(data.frame(RFmodel.rf$err.rate)["OOB"])	# find tree with minnimum error rate
+min.err								# Minimum error rate
+min.err.index <- which(data.frame(RFmodel.rf$err.rate)["OOB"]==min.err)
+min.err.index							# Tree with minimum error
+
+RFmodel.rf
+summary(RFmodel.rf)
+# summary(RFmodel.rf$test$err.rate)
+head(RFmodel.rf$err.rate)
+plot(RFmodel.rf$err.rate[,1]) # total error, it's learning until a point that it goes up again, due to 1's
+plot(RFmodel.rf$err.rate[,2]) # error for 0, it's learning, it is going down
+plot(RFmodel.rf$err.rate[,3]) # error for 1, it doesn't learn
+
+# to see the importance of the variables, not only in the general error, as well the contribution to the flag (0,1)
+rn <- round(importance(RFmodel.rf), 2)
+rn[order(rn[,3], decreasing=TRUE),]
+
+# Plot variable importance
+plot(RFmodel.rf, log="y")
+varImpPlot(RFmodel.rf, n.var=20)
+#MDSplot(RFmodel.rf, ytraining)
+par(mfrow = c(2,2))
+
+#RFmodel.rf$RFmodel.rf[n_tree]
+
+
+#------------------------------> Train ROC
+
+# Training ROC
+probxRFtraining <- predict(RFmodel.rf, xtraining, type="prob")
+pred <- prediction(probxRFtraining[,"1"],matrix(ytraining)) 
+perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
+#plot(perf, print.cutoffs.at=seq(0,1,by=0.01))
+plot(perf, col=rainbow(10), colorize=TRUE, lwd=3)
+title("ROC Training")
+abline(v=0.2)
+abline(h=0.6)
+auctraining <- performance(pred, measure = "auc")@y.values[[1]]
+legend("bottomright",legend=c(paste("RF (AUC=",formatC(auctraining,digits=4,format="f"),")",sep="")),  
+       col=c("red"), lty=1)
+
+# OOB ROC
+pred <- prediction(RFmodel.rf$votes[,"1"],matrix(ytraining))
+perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
+aucOOB <- performance(pred, measure = "auc")@y.values[[1]]
+#plot(perf, print.cutoffs.at=seq(0,1,by=0.01))
+plot(perf, col=rainbow(10), colorize=TRUE, lwd=3)
+title("ROC OOB")
+abline(v=0.2)
+abline(h=0.6)
+legend("bottomright",legend=c(paste("RF (AUC=",formatC(aucOOB,digits=4,format="f"),")",sep="")),  
+       col=c("red"), lty=1)
+#plot(perf, lwd=3)
+
+
+
+
+####################################### Preparing Test Data
+
+colnameskeep_initial <- colnames(test[,(colnames(test) %in% colnames(train))])
+test = test[,colnameskeep_initial]
+
+
+
+
