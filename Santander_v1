@@ -24,51 +24,48 @@ sample_submission <- read.csv("sample_submission.csv")
 
 # price quotes from our suppliers
 str(train)
-summary(train)
+#summary(train)
 colnames(train)
 
-str(test)
-summary(test)
-colnames(test)
-
-str(sample_submission)
+str(predict)
+#summary(test)
+colnames(predict)
 
 ####################################### Preparing Training Data
 
-colnameskeep_initial <- colnames(train[,(colnames(train) %in% colnames(test))])
+colnameskeep_initial <- colnames(train[,(colnames(train) %in% colnames(predict))])
 colnameskeep_initial <- c(colnameskeep_initial,"TARGET")
 train = train[,colnameskeep_initial]
 
-smp_size_1 <- floor(0.7 * nrow(train[which(train$TARGET == 1),]))
-smp_size_0 <- floor(0.7 * nrow(train[which(train$TARGET == 0),]))
+train$TARGET = factor(train$TARGET)
 
 ## set the seed to make your partition reproductible
 set.seed(123)
-train_ind_1 <- sample(which(train$FLAG == 1), size = smp_size_1)
-train_ind_0 <- sample(which(train$FLAG == 0), size = smp_size_0)
-train_ind <- c(train_ind_1,train_ind_0)
 
-test_ind_1 <- which(train$FLAG == 1)[!which(train$FLAG == 1) %in% train_ind_1]
-test_ind_0 <- which(train$FLAG == 0)[!which(train$FLAG == 0) %in% train_ind_0]
-test_ind <- c(test_ind_1,test_ind_0)
+trainIndex <- createDataPartition(train$TARGET, p = .8,
+                                  list = FALSE,
+                                  times = 1)
 
-train <- data[train_ind, ]
-test <- data[test_ind, ]
+
+
+SantanderTrain <- train[ trainIndex,]
+SantanderTest  <- train[-trainIndex,]
+
+colnames(SantanderTrain)
+#table(SantanderTrain$TARGET)
 
 ####################################### Training Model
 
-RFmodel.rf <- randomForest(TARGET ~ .,data = train,
+RFmodel.rf <- randomForest(TARGET ~ .,data = SantanderTrain[-1],
                            importance=TRUE,
-                           #mtry=30, # # of variables (default sqrt(p))
+                           mtry=50, # # of variables (default sqrt(p))
                            #proximity=TRUE,
-                           ntree=50,
+                           ntree=5000,
                            #nodesize=5, #Min # of observations (default 1) - do CV
                            #maxnodes=15, # Maximum number of terminal nodes trees (default max possible)
                            type="classification", 
-                           #xtest=xtesttree, ytest=ytesttree, 
                            #sampsize = c(250,250),
                            keep.forest=TRUE)
-
 
 round(head(RFmodel.rf$err.rate,202),4)  	# look at the error rate
 min.err <- min(data.frame(RFmodel.rf$err.rate)["OOB"])	# find tree with minnimum error rate
@@ -100,8 +97,8 @@ par(mfrow = c(2,2))
 #------------------------------> Train ROC
 
 # Training ROC
-probxRFtraining <- predict(RFmodel.rf, train[,-TARGET], type="prob")
-pred <- prediction(probxRFtraining[,"1"],matrix(ytraining)) 
+probxRFtraining <- predict(RFmodel.rf, SantanderTrain[,-371], type="prob")
+pred <- prediction(probxRFtraining[,"1"],matrix(SantanderTrain[,371])) 
 perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
 #plot(perf, print.cutoffs.at=seq(0,1,by=0.01))
 plot(perf, col=rainbow(10), colorize=TRUE, lwd=3)
@@ -113,7 +110,7 @@ legend("bottomright",legend=c(paste("RF (AUC=",formatC(auctraining,digits=4,form
        col=c("red"), lty=1)
 
 # OOB ROC
-pred <- prediction(RFmodel.rf$votes[,"1"],matrix(ytraining))
+pred <- prediction(RFmodel.rf$votes[,"1"],matrix(SantanderTrain[,371]))
 perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
 aucOOB <- performance(pred, measure = "auc")@y.values[[1]]
 #plot(perf, print.cutoffs.at=seq(0,1,by=0.01))
@@ -125,10 +122,40 @@ legend("bottomright",legend=c(paste("RF (AUC=",formatC(aucOOB,digits=4,format="f
        col=c("red"), lty=1)
 #plot(perf, lwd=3)
 
-
-
-
 ####################################### Preparing Test Data
 
 colnameskeep_initial <- colnames(test[,(colnames(test) %in% colnames(train))])
 test = test[,colnameskeep_initial]
+
+
+####################################### Prediction
+
+str(sample_submission)
+colnames(predict)
+
+colnames(SantanderTest)
+probxgotest <- predict(RFmodel.rf, predict, type="prob",na.action=na.roughfix)
+
+final <- data.frame(ID = predict[,"ID"], TARGET = probxgotest[,"1"])
+getwd()
+write.csv(final)
+
+write.csv(final, "Santander_submission_v1.csv", row.names = F)
+
+
+#----------------------------------> test ROC
+probxRFtesttree <- predict(RFmodel.rf, SantanderTest[,-371], type="prob")
+#probxRFtesttree <- predict(RFmodel.rf,rbind(xtraining[,],xtesttree[,]), type="prob")
+pred <- prediction(probxRFtesttree[,"1"],matrix(SantanderTest[,371]))
+perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
+#plot(perf, print.cutoffs.at=seq(0,1,by=0.05))
+plot(perf, col=rainbow(10), colorize=TRUE, lwd=3)
+#plot(perf, lwd=3)
+
+title("ROC Test Tree")
+abline(v=0.2)
+abline(h=0.6)
+auctest <- performance(pred, measure = "auc")@y.values[[1]]
+
+legend("bottomright",legend=c(paste("RF (AUC=",formatC(auctest,digits=4,format="f"),")",sep="")),  
+       col=c("red"), lty=1)
