@@ -12,19 +12,9 @@ require(caret)
 
 ####################################### Load data, understanding, DQ
 
-# setwd("C://Users//dilip.patel//Documents//GitHub//Kaggle-Caterpillar-Tube-Pricing//Data")
-
 setwd("/Users/dilip.patel/Google Drive/Learning/Analytics/Kaggle/Santander_Classification")
 
 getwd()
-
-#system("ls -al")
-#files <- system("ls", intern = TRUE)
-
-Sys.info()
-list.files("../data")
-ls()
-#list.files(file.path("..", "data"))
 
 # Importing data into R
 
@@ -34,29 +24,38 @@ sample_submission <- read.csv("sample_submission.csv")
 
 # price quotes from our suppliers
 str(train)
-head(train,-10)
 summary(train)
 colnames(train)
 
 str(test)
-head(test,10)
 summary(test)
 colnames(test)
 
 str(sample_submission)
 
-#Tube dimentions
-summary(tube)
-# list of components, and their quantities, used on each tube assembly
-summary(bom)
-# list of unique specifications (materials, processes, rust protectio) for the tube assembly
-summary(specs)
-head(specs)
-
 ####################################### Preparing Training Data
 
 colnameskeep_initial <- colnames(train[,(colnames(train) %in% colnames(test))])
+colnameskeep_initial <- c(colnameskeep_initial,"TARGET")
 train = train[,colnameskeep_initial]
+
+smp_size_1 <- floor(0.8 * nrow(data[which(data$FLAG == 1),]))
+smp_size_0 <- floor(0.8 * nrow(data[which(data$FLAG == 0),]))
+
+## set the seed to make your partition reproductible
+set.seed(123)
+train_ind_1 <- sample(which(data$FLAG == 1), size = smp_size_1)
+train_ind_0 <- sample(which(data$FLAG == 0), size = smp_size_0)
+train_ind <- c(train_ind_1,train_ind_0)
+
+test_ind_1 <- which(data$FLAG == 1)[!which(data$FLAG == 1) %in% train_ind_1]
+test_ind_0 <- which(data$FLAG == 0)[!which(data$FLAG == 0) %in% train_ind_0]
+test_ind <- c(test_ind_1,test_ind_0)
+
+#View(data[test_ind_1,])
+#View(data[train_ind_1,])
+train <- data[train_ind, ]
+test <- data[test_ind, ]
 
 ####################################### Training Model
 
@@ -64,7 +63,7 @@ RFmodel.rf <- randomForest(TARGET ~ .,data = train,
                            importance=TRUE,
                            #mtry=30, # # of variables (default sqrt(p))
                            #proximity=TRUE,
-                           ntree=201,
+                           ntree=50,
                            #nodesize=5, #Min # of observations (default 1) - do CV
                            #maxnodes=15, # Maximum number of terminal nodes trees (default max possible)
                            type="classification", 
@@ -103,7 +102,7 @@ par(mfrow = c(2,2))
 #------------------------------> Train ROC
 
 # Training ROC
-probxRFtraining <- predict(RFmodel.rf, xtraining, type="prob")
+probxRFtraining <- predict(RFmodel.rf, train[,-TARGET], type="prob")
 pred <- prediction(probxRFtraining[,"1"],matrix(ytraining)) 
 perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
 #plot(perf, print.cutoffs.at=seq(0,1,by=0.01))
@@ -135,7 +134,3 @@ legend("bottomright",legend=c(paste("RF (AUC=",formatC(aucOOB,digits=4,format="f
 
 colnameskeep_initial <- colnames(test[,(colnames(test) %in% colnames(train))])
 test = test[,colnameskeep_initial]
-
-
-
-
