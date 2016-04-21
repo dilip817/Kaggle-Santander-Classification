@@ -24,8 +24,10 @@ sample_submission <- read.csv("sample_submission.csv")
 
 # price quotes from our suppliers
 str(train)
-#summary(train)
+summary(train)
 colnames(train)
+
+summary(train)
 
 str(predict)
 #summary(test)
@@ -36,8 +38,46 @@ colnames(predict)
 colnameskeep_initial <- colnames(train[,(colnames(train) %in% colnames(predict))])
 colnameskeep_initial <- c(colnameskeep_initial,"TARGET")
 train = train[,colnameskeep_initial]
+train <- train[,-1]
+colnames(train)
 
-train$TARGET = factor(train$TARGET)
+# Remove variables with no more than one value
+for (i in 1:dim(train)[2]){
+  if(length(unique(train[,i])) < 2){
+    print(colnames(train)[i])
+    train <- train[,-i]
+    
+  }
+}
+
+unique(train$ind_var9_ult1)
+summary(train$ind_var46_0)
+
+# Factor conversion
+for (i in 1:dim(train)[2]){
+  if(length(unique(train[,i])) < 3){
+    print(colnames(train)[i])
+    train[,i] <- factor(train[,i])
+    summary(train[,i])
+    
+  }
+}
+
+unique(train$num_var29_0)
+summary(train$num_meses_var13_medio_ult3)
+
+
+# Remove variables with no more than one value
+for (i in 1:dim(train)[2]){
+  if(length(unique(train[,i])) == 3){
+    print(colnames(train)[i])
+    train[,i] <- factor(train[,i])
+    summary(train[,i])
+    
+  }
+}
+
+unique(train$saldo_medio_var13_corto_ult3)
 
 ## set the seed to make your partition reproductible
 set.seed(123)
@@ -56,16 +96,18 @@ colnames(SantanderTrain)
 
 ####################################### Training Model
 
-RFmodel.rf <- randomForest(TARGET ~ .,data = SantanderTrain[-1],
+RFmodel.rf <- randomForest(TARGET ~ .,data = SantanderTrain,
                            importance=TRUE,
-                           mtry=50, # # of variables (default sqrt(p))
+                           #mtry=25, # # of variables (default sqrt(p))
                            #proximity=TRUE,
-                           ntree=5000,
+                           ntree=500,
                            #nodesize=5, #Min # of observations (default 1) - do CV
                            #maxnodes=15, # Maximum number of terminal nodes trees (default max possible)
                            type="classification", 
                            #sampsize = c(250,250),
                            keep.forest=TRUE)
+
+
 
 round(head(RFmodel.rf$err.rate,202),4)  	# look at the error rate
 min.err <- min(data.frame(RFmodel.rf$err.rate)["OOB"])	# find tree with minnimum error rate
@@ -97,8 +139,8 @@ par(mfrow = c(2,2))
 #------------------------------> Train ROC
 
 # Training ROC
-probxRFtraining <- predict(RFmodel.rf, SantanderTrain[,-371], type="prob")
-pred <- prediction(probxRFtraining[,"1"],matrix(SantanderTrain[,371])) 
+probxRFtraining <- predict(RFmodel.rf, SantanderTrain[,-370], type="prob")
+pred <- prediction(probxRFtraining[,"1"],matrix(SantanderTrain[,370])) 
 perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
 #plot(perf, print.cutoffs.at=seq(0,1,by=0.01))
 plot(perf, col=rainbow(10), colorize=TRUE, lwd=3)
@@ -122,6 +164,26 @@ legend("bottomright",legend=c(paste("RF (AUC=",formatC(aucOOB,digits=4,format="f
        col=c("red"), lty=1)
 #plot(perf, lwd=3)
 
+#-----------------------------------> GBM
+
+fitControl <- trainControl(
+  method = "repeatedcv", # The resampling method
+  number = 5, #number of folds
+  repeats = 1)
+
+TuneGrid <- expand.grid(n.trees = 500,interaction.depth = 11,shrinkage = 0.01,n.minobsinnode=10)
+
+fit.gbm <- train(TARGET ~ ., data = SantanderTrain,
+                 method = "gbm",
+                 trControl = fitControl,
+                 verbose = FALSE,
+                 weights = datat$weights,
+                 tuneGrid = TuneGrid
+                 #,metric="ROC"
+)
+
+summary(fit.gbm)
+
 ####################################### Preparing Test Data
 
 colnameskeep_initial <- colnames(test[,(colnames(test) %in% colnames(train))])
@@ -138,15 +200,14 @@ probxgotest <- predict(RFmodel.rf, predict, type="prob",na.action=na.roughfix)
 
 final <- data.frame(ID = predict[,"ID"], TARGET = probxgotest[,"1"])
 getwd()
-write.csv(final)
 
 write.csv(final, "Santander_submission_v1.csv", row.names = F)
 
 
 #----------------------------------> test ROC
-probxRFtesttree <- predict(RFmodel.rf, SantanderTest[,-371], type="prob")
+probxRFtesttree <- predict(RFmodel.rf, SantanderTest[,-370], type="prob")
 #probxRFtesttree <- predict(RFmodel.rf,rbind(xtraining[,],xtesttree[,]), type="prob")
-pred <- prediction(probxRFtesttree[,"1"],matrix(SantanderTest[,371]))
+pred <- prediction(probxRFtesttree[,"1"],matrix(SantanderTest[,370]))
 perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
 #plot(perf, print.cutoffs.at=seq(0,1,by=0.05))
 plot(perf, col=rainbow(10), colorize=TRUE, lwd=3)
