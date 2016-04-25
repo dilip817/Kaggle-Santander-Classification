@@ -33,7 +33,7 @@ str(predict)
 #summary(test)
 colnames(predict)
 
-####################################### Preparing Training Data
+#---------------------------------> Preparing Training Data
 
 # Remove variables with no more than one value - predict
 for (i in 1:dim(predict)[2]){
@@ -59,7 +59,15 @@ for (i in 1:dim(train)[2]){
 
 # Remove bad features 
 colums_drops_initial <- c("imp_trasp_var33_out_ult1","imp_amort_var18_ult1","saldo_var18","imp_reemb_var33_ult1",
-                          "num_trasp_var17_out_ult1")
+                          "num_trasp_var17_out_ult1",""delta_imp_amort_var34_1y3","delta_imp_trasp_var33_out_1y3",
+                          "delta_num_trasp_var33_out_1y3","ind_var13_medio","ind_var13_medio_0","ind_var18","ind_var18_0",
+                          "ind_var29","ind_var34","ind_var34_0","ind_var6","ind_var7_emit_ult1","num_meses_var13_medio_ult3",
+                          "num_trasp_var17_in_ult1","num_trasp_var33_out_ult1","num_var13_medio","num_var13_medio_0",
+                          "num_var29","num_var34","num_var34_0","num_var6","num_var7_emit_ult1")
+
+
+
+
 colnameskeep_initial <- colnames(train[,!(colnames(train) %in% colums_drops_initial)])
 train = train[,colnameskeep_initial]
 
@@ -114,7 +122,7 @@ RFmodel.rf <- randomForest(TARGET ~ .,data = SantanderTrain,
                            importance=TRUE,
                            mtry=25, # # of variables (default sqrt(p))
                            #proximity=TRUE,
-                           ntree=5000,
+                           ntree=500,
                            #nodesize=5, #Min # of observations (default 1) - do CV
                            #maxnodes=15, # Maximum number of terminal nodes trees (default max possible)
                            type="classification", 
@@ -148,6 +156,7 @@ par(mfrow = c(2,2))
 #RFmodel.rf$RFmodel.rf[n_tree]
 
 colnames(SantanderTrain)
+summary(SantanderTrain)
 
 #------------------------------> Train ROC
 
@@ -186,13 +195,13 @@ fitControl <- trainControl(
   number = 5, #number of folds
   repeats = 1)
 
-TuneGrid <- expand.grid(n.trees = 500,interaction.depth = 11,shrinkage = 0.01,n.minobsinnode=10)
+TuneGrid <- expand.grid(n.trees = 250,interaction.depth = 11,shrinkage = 0.01,n.minobsinnode=10)
 
 fit.gbm <- train(TARGET ~ ., data = SantanderTrain,
                  method = "gbm",
                  trControl = fitControl,
                  verbose = FALSE,
-                 weights = datat$weights,
+                 weights = SantanderTrain$weights,
                  tuneGrid = TuneGrid
                  #,metric="ROC"
 )
@@ -202,218 +211,8 @@ summary(fit.gbm)
 ####################################### Preparing Prediction Data
 
 
-#-----------------------------> extra
-
-train$num_var44 <- as.numeric(train$num_var44)
-train$num_var7_emit_ult1 <- as.numeric(train$num_var7_emit_ult1)
-train$num_trasp_var17_in_ult1 <- as.numeric(train$num_trasp_var17_in_ult1)
-train$num_var13_medio_0 <- as.numeric(train$num_var13_medio_0)
-train$num_var44 <- as.numeric(train$num_var44)
-train$num_var7_emit_ult1 <- as.numeric(train$num_var7_emit_ult1)
-train$num_trasp_var17_in_ult1 <- as.numeric(train$num_trasp_var17_in_ult1)
-train$num_var13_medio_0 <- as.numeric(train$num_var13_medio_0)
-train$imp_aport_var33_hace3 <- as.numeric(train$imp_aport_var33_hace3)
-train$imp_aport_var33_ult1 <- as.numeric(train$imp_aport_var33_ult1)
-train$imp_var7_emit_ult1 <- as.numeric(train$imp_var7_emit_ult1)
-
-train$delta_imp_reemb_var17_1y3 <- as.numeric(train$delta_imp_reemb_var17_1y3)
-train$delta_num_reemb_var17_1y3 <- as.numeric(train$delta_num_reemb_var17_1y3)
-train$imp_reemb_var13_ult1 <- as.numeric(train$imp_reemb_var13_ult1)
-#train$imp_reemb_var33_ult1 <- as.numeric(train$imp_reemb_var33_ult1)
-#train$num_trasp_var17_out_ult1 <- as.numeric(train$num_trasp_var17_out_ult1)
-
-
-predict$num_var44 <- as.numeric(predict$num_var44)
-predict$num_var7_emit_ult1 <- as.numeric(predict$num_var7_emit_ult1)
-predict$num_trasp_var17_in_ult1 <- as.numeric(predict$num_trasp_var17_in_ult1)
-predict$num_var13_medio_0 <- as.numeric(predict$num_var13_medio_0)
-predict$imp_aport_var33_hace3 <- as.numeric(predict$imp_aport_var33_hace3)
-predict$imp_aport_var33_ult1 <- as.numeric(predict$imp_aport_var33_ult1)
-predict$imp_var7_emit_ult1 <- as.numeric(predict$imp_var7_emit_ult1)
-predict$delta_imp_reemb_var17_1y3 <- as.numeric(predict$delta_imp_reemb_var17_1y3)
-predict$delta_num_reemb_var17_1y3 <- as.numeric(predict$delta_num_reemb_var17_1y3)
-predict$imp_reemb_var13_ult1 <- as.numeric(predict$imp_reemb_var13_ult1)
-#predict$imp_reemb_var33_ult1 <- as.numeric(predict$imp_reemb_var33_ult1)
-#predict$num_trasp_var17_out_ult1   <- as.numeric(predict$num_trasp_var17_out_ult1)
-
-summary(SantanderTrain)
-summary(predict)
-
-#testcurrent$INDUSTRY_FIX <- factor(testcurrent$INDUSTRY_FIX,levels=levels(datat$INDUSTRY_FIX))
-
-predict$num_var13_medio_0 <- factor(predict$num_var13_medio_0,levels=levels(SantanderTrain$num_var13_medio_0))
-predict$num_var44 <- factor(predict$num_var44,levels=levels(SantanderTrain$num_var44))
-predict$num_trasp_var17_in_ult1 <- factor(predict$num_trasp_var17_in_ult1,levels=levels(SantanderTrain$num_trasp_var17_in_ult1))
-predict$num_var7_emit_ult1 <- factor(predict$num_var7_emit_ult1,levels=levels(SantanderTrain$num_var7_emit_ult1))
-
-predict$ind_var1_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var1 <- factor(predict$ind_var1,levels=levels(SantanderTrain$ind_var1))
-predict$ind_var5_0 <- factor(predict$ind_var5_0,levels=levels(SantanderTrain$ind_var5_0))
-predict$ind_var5 <- factor(predict$ind_var5,levels=levels(SantanderTrain$ind_var5))
-predict$ind_var6_0 <- factor(predict$ind_var6_0,levels=levels(SantanderTrain$ind_var6_0))
-predict$ind_var6 <- factor(predict$ind_var6,levels=levels(SantanderTrain$ind_var6))
-predict$ind_var8_0 <- factor(predict$ind_var8_0,levels=levels(SantanderTrain$ind_var8_0))
-predict$ind_var8 <- factor(predict$ind_var8,levels=levels(SantanderTrain$ind_var8))
-predict$ind_var12_0 <- factor(predict$ind_var12_0,levels=levels(SantanderTrain$ind_var12_0))
-predict$ind_var12 <- factor(predict$ind_var12,levels=levels(SantanderTrain$ind_var12))
-predict$ind_var13_0 <- factor(predict$ind_var13_0,levels=levels(SantanderTrain$ind_var13_0))
-predict$ind_var13_corto_0 <- factor(predict$ind_var13_corto_0,levels=levels(SantanderTrain$ind_var13_corto_0))
-predict$ind_var13_corto <- factor(predict$ind_var13_corto,levels=levels(SantanderTrain$ind_var13_corto))
-predict$ind_var13_largo_0 <- factor(predict$ind_var13_largo_0,levels=levels(SantanderTrain$ind_var13_largo_0))
-predict$ind_var13_largo <- factor(predict$ind_var13_largo,levels=levels(SantanderTrain$ind_var13_largo))
-predict$ind_var13_medio_0 <- factor(predict$ind_var13_medio_0,levels=levels(SantanderTrain$ind_var13_medio_0))
-predict$ind_var13_medio <- factor(predict$ind_var13_medio,levels=levels(SantanderTrain$ind_var13_medio))
-predict$ind_var13 <- factor(predict$ind_var13,levels=levels(SantanderTrain$ind_var13))
-predict$ind_var14_0 <- factor(predict$ind_var14_0,levels=levels(SantanderTrain$ind_var14_0))
-predict$ind_var14 <- factor(predict$ind_var14,levels=levels(SantanderTrain$ind_var14))
-
-predict$ind_var17_0 <- factor(predict$ind_var17_0,levels=levels(SantanderTrain$ind_var17_0))
-predict$ind_var17 <- factor(predict$ind_var17,levels=levels(SantanderTrain$ind_var17))
-predict$ind_var18_0 <- factor(predict$ind_var18_0,levels=levels(SantanderTrain$ind_var18_0))
-predict$ind_var18 <- factor(predict$ind_var18,levels=levels(SantanderTrain$ind_var18))
-predict$ind_var19 <- factor(predict$ind_var19,levels=levels(SantanderTrain$ind_var19))
-predict$ind_var20_0 <- factor(predict$ind_var20_0,levels=levels(SantanderTrain$ind_var20_0))
-predict$ind_var20 <- factor(predict$ind_var20,levels=levels(SantanderTrain$ind_var20))
-predict$ind_var24_0 <- factor(predict$ind_var24_0,levels=levels(SantanderTrain$ind_var24_0))
-
-predict$ind_var24 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var25_cte <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var26_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var26_cte <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var26 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var25_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var25 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var29_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var29 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var30_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var30 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var31_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var31 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var32_cte <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var32_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var32 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var33_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var33 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var34_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var34 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var37_cte <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var37_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var37 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var39_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var40_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var40 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var41_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var39 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var44_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var44 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var6_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var6 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var8 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var13_medio_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var13_medio <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var18_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var18 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var20_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var20 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var29_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var29 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var34_0 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var34 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var40 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var39 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var44 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$delta_imp_amort_var18_1y3 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$delta_imp_amort_var34_1y3 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$delta_imp_reemb_var13_1y3 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$delta_imp_trasp_var33_out_1y3 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$delta_num_reemb_var13_1y3 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$delta_num_trasp_var33_out_1y3 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var7_emit_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var7_recib_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var10_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var10cte_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var9_cte_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var9_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var43_emit_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$ind_var43_recib_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_var7_emit_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_meses_var13_medio_ult3 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_reemb_var13_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_trasp_var17_in_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_trasp_var33_in_hace3 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$num_trasp_var33_out_ult1 <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-predict$TARGET <- factor(predict$ind_var1_0,levels=levels(SantanderTrain$ind_var1_0))
-
-order(str(predict))
-
-str(train$imp_trasp_var33_out_ult1)
-str(train$imp_amort_var18_ult1)
-str(train$saldo_var18)
-
-str(predict$imp_trasp_var33_out_ult1)
-str(predict$imp_amort_var18_ult1)
-str(predict$saldo_var18)
-
-str(train$num_var13_medio_0)
-str(train$num_var44)
-str(train$num_trasp_var17_in_ult1)
-str(train$num_var7_emit_ult1)
-str(train$delta_imp_reemb_var17_1y3)
-str(train$delta_num_reemb_var17_1y3)
-
-summary(as.numeric(train$ind_var5_0,500))
-summary(predict$ind_var5_0,500)
-
-str(predict$num_var13_medio_0)
-str(predict$num_var44)
-str(predict$num_trasp_var17_in_ult1)
-str(predict$num_var7_emit_ult1)
-str(predict$delta_imp_reemb_var17_1y3)
-str(predict$delta_num_reemb_var17_1y3)
-
-
-##-----------------------------------------> Extra 2
-  
-colnames(train)
-colnames(SantanderTrain)
-colnames(predict)
-
-
-# Conver predict data types and factor levels to SantanderTrain
-
-for (i in 2:dim(train)[2]){
-  if(is.factor(train[,i])){
-    predict[,i] <- factor(predict[,i],levels=levels(train[,i]))
-    print(cat(i,colnames(train)[i],"factor"))
-    print(cat(i,colnames(predict)[i],"factor"))
-    
-  }
-  
-  else if(is.numeric(train[,i])){
-    predict[,i] <- as.numeric(predict[,i])
-    print(cat(i,colnames(train)[i],"num"))
-    print(cat(i,colnames(predict)[i],"num"))
-  }
-  
-  else if(is.integer(train[,i])){
-    predict[,i] <- as.integer(predict[,i])
-    print(cat(i,colnames(train)[i],"int"))
-    print(cat(i,colnames(predict)[i],"int"))
-  }
-}
-
-
-for (i in 2:dim(SantanderTrain)[2]){
-  if(length(unique(train[,i])) < 3){
-    predict[,i-1] <- factor(predict[,i-1],levels=levels(SantanderTrain[,i]))
-    print(cat(i, "train", levels(SantanderTrain[,i])))
-    print(levels(predict[,i-1]))
-  }
-}
-
 str(SantanderTrain, list.len=ncol(SantanderTrain))
 str(predict, list.len=ncol(predict))
-
 
 set.seed(200)
 
@@ -432,7 +231,7 @@ probxgotest <- predict(RFmodel.rf, predict, type="prob",na.action=na.roughfix)
 final <- data.frame(ID = predict[,"ID"], TARGET = probxgotest[,"1"])
 getwd()
 
-write.csv(final, "Santander_submission_v1.csv", row.names = F)
+write.csv(final, "Santander_submission_v2.csv", row.names = F)
 
 
 #----------------------------------> test ROC
