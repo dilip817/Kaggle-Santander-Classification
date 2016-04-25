@@ -196,10 +196,11 @@ col=c("red"), lty=1)
 
 fitControl <- trainControl(
 method = "repeatedcv", # The resampling method
-number = 5, #number of folds
+number = 5, #10
 repeats = 1)
 
-TuneGrid <- expand.grid(n.trees = 500,interaction.depth = 25,shrinkage = 0.01,n.minobsinnode=10)
+TuneGrid <- expand.grid(n.trees = 300,interaction.depth = 15,shrinkage = 0.01,n.minobsinnode=10)
+#TuneGrid <- expand.grid(n.trees = 1000,interaction.depth = 30,shrinkage = 0.001,n.minobsinnode=10)
 
 fit.gbm <- train(TARGET ~ ., data = SantanderTrain,
 method = "gbm",
@@ -238,19 +239,18 @@ getwd()
 
 write.csv(final, "Santander_submission_v3.csv", row.names = F)
 
-
 #----------------------------------> test ROC
 
-#probxRFtesttree <- predict(RFmodel.rf, SantanderTest[,-1], type="prob")
-#pred <- prediction(probxRFtesttree[,"1"],matrix(SantanderTest[,1]))
+#RF
+probxRFtesttree <- predict(RFmodel.rf, SantanderTest[,-1], type="prob")
+pred <- prediction(probxRFtesttree[,"1"],matrix(SantanderTest[,1]))
 
+#GBM
 probxGBMtesttree <- predict(fit.gbm, SantanderTest[,-1], type="prob")
 pred <- prediction(probxGBMtesttree[,"1"],matrix(SantanderTest[,1]))
 
 perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
-#plot(perf, print.cutoffs.at=seq(0,1,by=0.05))
 plot(perf, col=rainbow(10), colorize=TRUE, lwd=3)
-#plot(perf, lwd=3)
 
 title("ROC Test Tree")
 abline(v=0.2)
