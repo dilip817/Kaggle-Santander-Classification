@@ -59,6 +59,31 @@ colnameskeep_initial <- c("TARGET",colnameskeep_initial)
 train = train[,colnameskeep_initial]
 colnames(train)
 
+##### Removing identical features
+features_pair <- combn(names(train), 2, simplify = F)
+toRemove <- c()
+for(pair in features_pair) {
+  f1 <- pair[1]
+  f2 <- pair[2]
+  
+  if (!(f1 %in% toRemove) & !(f2 %in% toRemove)) {
+    if (all(train[[f1]] == train[[f2]])) {
+      cat(f1, "and", f2, "are equals.\n")
+      toRemove <- c(toRemove, f2)
+    }
+  }
+}
+
+feature.names <- setdiff(names(train), toRemove)
+
+train$var38 <- log(train$var38)
+test$var38 <- log(test$var38)
+maxmin['var38', 'min'] <- log(maxmin['var38', 'min'])
+maxmin['var38', 'max'] <- log(maxmin['var38', 'max'])
+
+train <- train[, feature.names]
+test <- test[, feature.names]
+
 # Remove variables with no more than one value - train
 for (i in 1:dim(train)[2]){
   if(length(unique(train[,i])) < 2){
@@ -73,9 +98,11 @@ colums_drops_initial <- c("imp_trasp_var33_out_ult1","imp_amort_var18_ult1","sal
                           "delta_num_trasp_var33_out_1y3","ind_var13_medio","ind_var13_medio_0","ind_var18","ind_var18_0",
                           "ind_var29","ind_var34","ind_var34_0","ind_var6","ind_var7_emit_ult1","num_meses_var13_medio_ult3",
                           "num_trasp_var17_in_ult1","num_trasp_var33_out_ult1","num_var13_medio","num_var13_medio_0",
-                          "num_var29","num_var34","num_var34_0","num_var6","num_var7_emit_ult1")
-                          
-                          
+                          "num_var29","num_var34","num_var34_0","num_var6","num_var7_emit_ult1",
+                          "imp_amort_var34_ult1","imp_trasp_var17_in_hace3","num_trasp_var17_in_hace3","num_venta_var44_hace3","saldo_medio_var13_medio_hace2",
+                          "saldo_medio_var13_medio_ult1","saldo_medio_var13_medio_ult3","saldo_var13_medio","saldo_var29","saldo_var34","saldo_var6","saldo_medio_var29_ult3")
+
+
 colnameskeep_initial <- colnames(train[,!(colnames(train) %in% colums_drops_initial)])
 train = train[,colnameskeep_initial]
 
@@ -91,12 +118,66 @@ colnames(predict)
 
 for (i in 2:dim(train)[2]){
   if(length(unique(train[,i])) < 3){
-  print(colnames(train)[i])
-  train[,i] <- factor(train[,i])
-  predict[,i] <- factor(predict[,i],levels=levels(train[,i]))
+    print(colnames(train)[i])
+    train[,i] <- factor(train[,i])
+    predict[,i] <- factor(predict[,i],levels=levels(train[,i]))
   }
 }
 
+# Find varaible with 3 factors
+for (i in 2:dim(train)[2]){
+  if(length(unique(train[,i])) == 3){
+    print(colnames(train)[i])
+    train[,i] <- factor(train[,i])
+    predict[,i] <- factor(predict[,i],levels=levels(train[,i]))
+  }
+}
+
+for (i in 2:dim(train)[2]){
+  if(length(unique(train[,i])) == 4){
+    print(colnames(train)[i])
+    train[,i] <- factor(train[,i])
+    predict[,i] <- factor(predict[,i],levels=levels(train[,i]))
+  }
+}
+
+for (i in 2:dim(train)[2]){
+  if(length(unique(train[,i])) == 5){
+    print(colnames(train)[i])
+    print(unique(train[i]))
+  }
+}
+
+train$delta_num_venta_var44_1y3 <- factor(train$delta_num_venta_var44_1y3)
+predict$delta_num_venta_var44_1y3 <- factor(predict$delta_num_venta_var44_1y3,levels=levels(train$delta_num_venta_var44_1y3))
+
+train$num_aport_var17_hace3 <- factor(train$num_aport_var17_hace3)
+predict$num_aport_var17_hace3 <- factor(predict$num_aport_var17_hace3,levels=levels(train$num_aport_var17_hace3))
+
+train$num_op_var40_hace3 <- factor(train$num_op_var40_hace3)
+predict$num_op_var40_hace3 <- factor(predict$num_op_var40_hace3,levels=levels(train$num_op_var40_hace3))
+
+train$num_reemb_var17_ult1 <- factor(train$num_reemb_var17_ult1)
+predict$num_reemb_var17_ult1 <- factor(predict$num_reemb_var17_ult1,levels=levels(train$num_reemb_var17_ult1))
+
+train$num_var14_0 <- factor(train$num_var14_0)
+predict$num_var14_0 <- factor(predict$num_var14_0,levels=levels(train$num_var14_0))
+                                                                            
+train$num_var32 <- factor(train$num_var32)
+predict$num_var32 <- factor(predict$num_var32,levels=levels(train$num_var32))
+
+train$num_var32_0 <- factor(train$num_var32_0)
+predict$num_var32_0 <- factor(predict$num_var32_0,levels=levels(train$num_var32_0))
+                                                          
+train$num_var5 <- factor(train$num_var5)
+predict$num_var5 <- factor(predict$num_var5,levels=levels(train$num_var5))
+
+train$num_var5_0 <- factor(train$num_var5_0)
+predict$num_var5_0 <- factor(predict$num_var5_0,levels=levels(train$num_var5_0))
+                                                         
+train$var36 <- factor(train$var36)
+predict$var36 <- factor(predict$var36,levels=levels(train$var36))
+                                                                                    
 ## set the seed to make your partition reproductible
 set.seed(123)
 
@@ -115,18 +196,20 @@ table(SantanderTrain$TARGET)
 table(SantanderTest$TARGET)
 table(train$TARGET)
 
+summary(train)
+
 ####################################### Training Model
 
 RFmodel.rf <- randomForest(TARGET ~ .,data = SantanderTrain,
-              importance=TRUE,
-              mtry=25, # # of variables (default sqrt(p))
-              #proximity=TRUE,
-              ntree=200,
-              #nodesize=5, #Min # of observations (default 1) - do CV
-              #maxnodes=15, # Maximum number of terminal nodes trees (default max possible)
-              type="classification", 
-              #sampsize = c(250,250),
-              keep.forest=TRUE)
+                           importance=TRUE,
+                           mtry=25, # # of variables (default sqrt(p))
+                           #proximity=TRUE,
+                           ntree=200,
+                           #nodesize=5, #Min # of observations (default 1) - do CV
+                           #maxnodes=15, # Maximum number of terminal nodes trees (default max possible)
+                           type="classification", 
+                           #sampsize = c(250,250),
+                           keep.forest=TRUE)
 
 round(head(RFmodel.rf$err.rate,202),4)  	# look at the error rate
 min.err <- min(data.frame(RFmodel.rf$err.rate)["OOB"])	# find tree with minnimum error rate
@@ -177,7 +260,7 @@ abline(v=0.2)
 abline(h=0.6)
 auctraining <- performance(pred, measure = "auc")@y.values[[1]]
 legend("bottomright",legend=c(paste("RF (AUC=",formatC(auctraining,digits=4,format="f"),")",sep="")),  
-col=c("red"), lty=1)
+       col=c("red"), lty=1)
 
 # OOB ROC
 pred <- prediction(RFmodel.rf$votes[,"1"],matrix(SantanderTrain[,1]))
@@ -189,27 +272,27 @@ title("ROC OOB")
 abline(v=0.2)
 abline(h=0.6)
 legend("bottomright",legend=c(paste("RF (AUC=",formatC(aucOOB,digits=4,format="f"),")",sep="")),  
-col=c("red"), lty=1)
+       col=c("red"), lty=1)
 #plot(perf, lwd=3)
 
 #-----------------------------------> GBM
 
 fitControl <- trainControl(
-method = "repeatedcv", # The resampling method
-number = 5, #10
-repeats = 1)
+  method = "repeatedcv", # The resampling method
+  number = 5, #10
+  repeats = 1)
 
-TuneGrid <- expand.grid(n.trees = 300,interaction.depth = 15,shrinkage = 0.01,n.minobsinnode=10)
-#TuneGrid <- expand.grid(n.trees = 1000,interaction.depth = 30,shrinkage = 0.001,n.minobsinnode=10)
-
-fit.gbm <- train(TARGET ~ ., data = SantanderTrain,
-method = "gbm",
-trControl = fitControl,
-verbose = FALSE,
-weights = SantanderTrain$weights,
-tuneGrid = TuneGrid
-#,metric="ROC"
-)
+  TuneGrid <- expand.grid(n.trees = 400,interaction.depth = 15,shrinkage = 0.01,n.minobsinnode=10)
+  #TuneGrid <- expand.grid(n.trees = 1000,interaction.depth = 30,shrinkage = 0.001,n.minobsinnode=10)
+  
+  fit.gbm <- train(TARGET ~ ., data = SantanderTrain,
+                   method = "gbm",
+                   trControl = fitControl,
+                   verbose = FALSE,
+                   weights = SantanderTrain$weights,
+                   tuneGrid = TuneGrid
+                   #,metric="ROC"
+  )
 
 summary(fit.gbm)
 
@@ -237,7 +320,7 @@ probxgotest <- predict(fit.gbm, predict, type="prob",na.action=na.roughfix)
 final <- data.frame(ID = predict[,"ID"], TARGET = probxgotest[,"1"])
 getwd()
 
-write.csv(final, "Santander_submission_v3.csv", row.names = F)
+write.csv(final, "Santander_submission_v4.csv", row.names = F)
 
 #----------------------------------> test ROC
 
@@ -258,4 +341,4 @@ abline(h=0.6)
 auctest <- performance(pred, measure = "auc")@y.values[[1]]
 
 legend("bottomright",legend=c(paste("RF (AUC=",formatC(auctest,digits=4,format="f"),")",sep="")),  
-col=c("red"), lty=1)
+       col=c("red"), lty=1)
