@@ -265,7 +265,7 @@ legend("bottomright",legend=c(paste("RF (AUC=",formatC(aucOOB,digits=4,format="f
        col=c("red"), lty=1)
 #plot(perf, lwd=3)
 
-#-----------------------------------> GBM
+#-----------------------------------------> GBM
 
 fitControl <- trainControl(
   method = "repeatedcv", # The resampling method
