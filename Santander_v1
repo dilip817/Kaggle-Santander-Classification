@@ -33,65 +33,6 @@ colnames(predict)
 
 #---------------------------------> Preparing Training Data
 
-train <- train[,-1]
-train <- train[ , order(names(train))]
-predict <- predict[ , order(names(predict))]
-
-train <- cbind(train[,365],train[,-365])
-colnames(train)[1] <- "TARGET"
-train[,1] <- factor(train[,1])
-
-predict <- cbind(predict[,27],predict[,-27])
-colnames(predict)[1] <- "ID"
-predict[,1] <- factor(predict[,1])
-
-
-# Remove variables with no more than one value - predict
-for (i in 1:dim(predict)[2]){
-  if(length(unique(predict[,i])) < 2){
-    print(colnames(predict)[i])
-    predict <- predict[,-i]
-  }
-}
-
-colnameskeep_initial <- colnames(train[,(colnames(train) %in% colnames(predict))])
-colnameskeep_initial <- c("TARGET",colnameskeep_initial)
-train = train[,colnameskeep_initial]
-colnames(train)
-
-##### Removing identical features
-features_pair <- combn(names(train), 2, simplify = F)
-toRemove <- c()
-for(pair in features_pair) {
-  f1 <- pair[1]
-  f2 <- pair[2]
-  
-  if (!(f1 %in% toRemove) & !(f2 %in% toRemove)) {
-    if (all(train[[f1]] == train[[f2]])) {
-      cat(f1, "and", f2, "are equals.\n")
-      toRemove <- c(toRemove, f2)
-    }
-  }
-}
-
-feature.names <- setdiff(names(train), toRemove)
-
-train$var38 <- log(train$var38)
-test$var38 <- log(test$var38)
-maxmin['var38', 'min'] <- log(maxmin['var38', 'min'])
-maxmin['var38', 'max'] <- log(maxmin['var38', 'max'])
-
-train <- train[, feature.names]
-test <- test[, feature.names]
-
-# Remove variables with no more than one value - train
-for (i in 1:dim(train)[2]){
-  if(length(unique(train[,i])) < 2){
-    print(colnames(train)[i])
-    #train <- train[,-i]
-  }
-}
-
 # Remove bad features 
 colums_drops_initial <- c("imp_trasp_var33_out_ult1","imp_amort_var18_ult1","saldo_var18","imp_reemb_var33_ult1",
                           "num_trasp_var17_out_ult1","delta_imp_amort_var34_1y3","delta_imp_trasp_var33_out_1y3",
@@ -109,6 +50,73 @@ train = train[,colnameskeep_initial]
 colnameskeep_initial <- colnames(predict[,(colnames(predict) %in% colnames(train))])
 colnameskeep_initial <- c("ID",colnameskeep_initial)
 predict = predict[,colnameskeep_initial]
+
+
+#Removing hghly correlated variables
+cor_v<-abs(cor(train))
+diag(cor_v)<-0
+cor_v[upper.tri(cor_v)] <- 0
+cor_f <- as.data.frame(which(cor_v > 0.85, arr.ind = T))
+train <- train[,-unique(cor_f$row)]
+
+# Order data sets
+train <- train[,-1]
+train <- train[ , order(names(train))]
+predict <- predict[ , order(names(predict))]
+
+train <- cbind(train[,168],train[,-168])
+colnames(train)[1] <- "TARGET"
+train[,1] <- factor(train[,1])
+
+#predict <- cbind(predict[,12],predict[,-12])
+#colnames(predict)[1] <- "ID"
+#predict[,1] <- factor(predict[,1])
+
+#Removing duplicate columns
+train_names <- names(train)[-1]
+fac <- data.frame(fac = integer())    
+
+for(i in 1:length(train_names))
+{
+  if(i != length(train_names))
+  {
+    for (k in (i+1):length(train_names)) 
+    {
+      if(identical(train[,i], train[,k]) == TRUE) 
+      {
+        fac <- rbind(fac, data.frame(fac = k))
+      }
+    }
+  }
+}
+
+same <- unique(fac$fac)
+train <- train[,-same]
+
+colnameskeep_initial <- colnames(predict[,(colnames(predict) %in% colnames(train))])
+colnameskeep_initial <- c("ID",colnameskeep_initial)
+predict = predict[,colnameskeep_initial]
+
+# Remove variables with no more than one value - predict
+for (i in 1:dim(predict)[2]){
+  if(length(unique(predict[,i])) < 2){
+    print(colnames(predict)[i])
+    predict <- predict[,-i]
+  }
+}
+
+colnameskeep_initial <- colnames(train[,(colnames(train) %in% colnames(predict))])
+colnameskeep_initial <- c("TARGET",colnameskeep_initial)
+train = train[,colnameskeep_initial]
+colnames(train)
+
+# Remove variables with no more than one value - train
+for (i in 1:dim(train)[2]){
+  if(length(unique(train[,i])) < 2){
+    print(colnames(train)[i])
+    #train <- train[,-i]
+  }
+}
 
 # Covert num to factor variables for train and preidct data
 
@@ -141,15 +149,9 @@ for (i in 2:dim(train)[2]){
   }
 }
 
-for (i in 2:dim(train)[2]){
-  if(length(unique(train[,i])) == 5){
-    print(colnames(train)[i])
-    print(unique(train[i]))
-  }
-}
 
-train$delta_num_venta_var44_1y3 <- factor(train$delta_num_venta_var44_1y3)
-predict$delta_num_venta_var44_1y3 <- factor(predict$delta_num_venta_var44_1y3,levels=levels(train$delta_num_venta_var44_1y3))
+# Outlier treatment
+
 
 train$num_aport_var17_hace3 <- factor(train$num_aport_var17_hace3)
 predict$num_aport_var17_hace3 <- factor(predict$num_aport_var17_hace3,levels=levels(train$num_aport_var17_hace3))
@@ -163,21 +165,9 @@ predict$num_reemb_var17_ult1 <- factor(predict$num_reemb_var17_ult1,levels=level
 train$num_var14_0 <- factor(train$num_var14_0)
 predict$num_var14_0 <- factor(predict$num_var14_0,levels=levels(train$num_var14_0))
                                                                             
-train$num_var32 <- factor(train$num_var32)
-predict$num_var32 <- factor(predict$num_var32,levels=levels(train$num_var32))
-
-train$num_var32_0 <- factor(train$num_var32_0)
-predict$num_var32_0 <- factor(predict$num_var32_0,levels=levels(train$num_var32_0))
-                                                          
-train$num_var5 <- factor(train$num_var5)
-predict$num_var5 <- factor(predict$num_var5,levels=levels(train$num_var5))
-
-train$num_var5_0 <- factor(train$num_var5_0)
-predict$num_var5_0 <- factor(predict$num_var5_0,levels=levels(train$num_var5_0))
-                                                         
 train$var36 <- factor(train$var36)
 predict$var36 <- factor(predict$var36,levels=levels(train$var36))
-                                                                                    
+
 ## set the seed to make your partition reproductible
 set.seed(123)
 
@@ -282,7 +272,7 @@ fitControl <- trainControl(
   number = 5, #10
   repeats = 1)
 
-  TuneGrid <- expand.grid(n.trees = 400,interaction.depth = 15,shrinkage = 0.01,n.minobsinnode=10)
+  TuneGrid <- expand.grid(n.trees = 500,interaction.depth = 15,shrinkage = 0.01,n.minobsinnode=10)
   #TuneGrid <- expand.grid(n.trees = 1000,interaction.depth = 30,shrinkage = 0.001,n.minobsinnode=10)
   
   fit.gbm <- train(TARGET ~ ., data = SantanderTrain,
@@ -295,6 +285,21 @@ fitControl <- trainControl(
   )
 
 summary(fit.gbm)
+
+#--------------------------------------> xgboost
+
+#Building the model
+set.seed(88)
+param <- list("objective" = "binary:logistic",booster = "gbtree",
+              "eval_metric" = "auc",colsample_bytree = 0.85, subsample = 0.95)
+
+y <- as.numeric(train$TARGET)
+
+#AUC was highest in 310th round during cross validation
+xgbmodel <- xgboost(data = as.matrix(train[,-c(1,151)]), params = param,
+                    nrounds = 310, max.depth = 5, eta = 0.03,
+                    label = y, maximize = T)
+
 
 ####################################### Preparing Prediction Data
 
