@@ -20,10 +20,13 @@ getwd()
 
 # Importing data into R
 
-train <- read.csv("train.csv")
-predict <- read.csv("test.csv")
+train0 <- read.csv("train.csv")
+predict0 <- read.csv("test.csv")
 sample_submission <- read.csv("sample_submission.csv")
 
+train <- train0
+predict <- predict0
+  
 # price quotes from our suppliers
 str(train)
 summary(train)
@@ -45,13 +48,20 @@ colums_drops_initial <- c("imp_trasp_var33_out_ult1","imp_amort_var18_ult1","sal
                           "imp_amort_var34_ult1","imp_trasp_var17_in_hace3","num_trasp_var17_in_hace3","num_venta_var44_hace3","saldo_medio_var13_medio_hace2",
                           "saldo_medio_var13_medio_ult1","saldo_medio_var13_medio_ult3","saldo_var13_medio","saldo_var29","saldo_var34","saldo_var6","saldo_medio_var29_ult3")
 
+summary(as.factor(train0$saldo_medio_var29_ult3))
+colnameskeep_train <- colnames(train[,!(colnames(train) %in% colums_drops_initial)])
+train = train[,colnameskeep_train]
 
-colnameskeep_initial <- colnames(train[,!(colnames(train) %in% colums_drops_initial)])
-train = train[,colnameskeep_initial]
+colnameskeep_test <- colnames(predict[,(colnames(predict) %in% colnames(train))])
+colnameskeep_test <- c(colnameskeep_test)
+predict = predict[,colnameskeep_test]
 
-colnameskeep_initial <- colnames(predict[,(colnames(predict) %in% colnames(train))])
-colnameskeep_initial <- c(colnameskeep_initial)
-predict = predict[,colnameskeep_initial]
+#colnameskeep_train <- colnames(predict[,(colnames(train) %in% colnames(predict))])
+#colnameskeep_train <- c(colnameskeep_train)
+#predict = predict[,colnameskeep_train]
+
+colnames(train)
+colnames(predict)
 
 # Order data sets
 train$ID <- NULL
@@ -67,6 +77,7 @@ train$TARGET <- NULL
 
 #---limit vars in predict based on min and max vals of train
 print('Setting min-max lims on predict data')
+
 for(f in colnames(train)){
   lim <- min(train[,f])
   predict[predict[,f]<lim,f] <- lim
@@ -81,10 +92,12 @@ train <- train[ , order(names(train))]
 predict <- predict[ , order(names(predict))]
 
 train <- cbind(train[,326],train[,-326])
+#train <- cbind(train[,365],train[,-365])
 colnames(train)[1] <- "TARGET"
 #train[,1] <- factor(train[,1])
 
 predict <- cbind(predict[,24],predict[,-24])
+#predict <- cbind(predict[,27],predict[,-27])
 colnames(predict)[1] <- "ID"
 #predict[,1] <- factor(predict[,1])
 
@@ -111,6 +124,26 @@ for(i in 1:length(train_names))
 
 same <- unique(fac$fac)
 train <- train[,-same]
+
+##### Removing identical features
+features_pair <- combn(names(train), 2, simplify = F)
+toRemove <- c()
+for(pair in features_pair) {
+  f1 <- pair[1]
+  f2 <- pair[2]
+  
+  if (!(f1 %in% toRemove) & !(f2 %in% toRemove)) {
+    if (all(train[[f1]] == train[[f2]])) {
+      cat(f1, "and", f2, "are equals.\n")
+      toRemove <- c(toRemove, f2)
+    }
+  }
+}
+
+feature.names <- setdiff(names(train), toRemove)
+
+train <- train[, feature.names]
+#test <- test[, feature.names]
 
 colnameskeep_initial <- colnames(predict[,(colnames(predict) %in% colnames(train))])
 colnameskeep_initial <- c("ID",colnameskeep_initial)
@@ -141,7 +174,7 @@ colnames(train)
 
 colnames(train)
 colnames(predict)
-
+nrow(predict)
 
 for (i in 2:dim(train)[2]){
   if(length(unique(train[,i])) < 3){
@@ -151,7 +184,7 @@ for (i in 2:dim(train)[2]){
   }
 }
 
-# Find varaible with 3 factors
+# Find varaible with 3 factors 
 for (i in 2:dim(train)[2]){
   if(length(unique(train[,i])) == 3){
     print(colnames(train)[i])
@@ -160,33 +193,35 @@ for (i in 2:dim(train)[2]){
   }
 }
 
-for (i in 2:dim(train)[2]){
-  if(length(unique(train[,i])) == 4){
-    print(colnames(train)[i])
-    train[,i] <- factor(train[,i])
-    predict[,i] <- factor(predict[,i],levels=levels(train[,i]))
-  }
-}
+# Commneted for XG
+#for (i in 2:dim(train)[2]){
+#  if(length(unique(train[,i])) == 4){
+#    print(colnames(train)[i])
+#    train[,i] <- factor(train[,i])
+#    predict[,i] <- factor(predict[,i],levels=levels(train[,i]))
+#  }
+#}
 
 
 # Outlier treatment
 
 
-train$num_aport_var17_hace3 <- factor(train$num_aport_var17_hace3)
-predict$num_aport_var17_hace3 <- factor(predict$num_aport_var17_hace3,levels=levels(train$num_aport_var17_hace3))
+#train$num_aport_var17_hace3 <- factor(train$num_aport_var17_hace3)
+#predict$num_aport_var17_hace3 <- factor(predict$num_aport_var17_hace3,levels=levels(train$num_aport_var17_hace3))
 
-train$num_op_var40_hace3 <- factor(train$num_op_var40_hace3)
-predict$num_op_var40_hace3 <- factor(predict$num_op_var40_hace3,levels=levels(train$num_op_var40_hace3))
+#train$num_op_var40_hace3 <- factor(train$num_op_var40_hace3)
+#predict$num_op_var40_hace3 <- factor(predict$num_op_var40_hace3,levels=levels(train$num_op_var40_hace3))
 
-train$num_reemb_var17_ult1 <- factor(train$num_reemb_var17_ult1)
-predict$num_reemb_var17_ult1 <- factor(predict$num_reemb_var17_ult1,levels=levels(train$num_reemb_var17_ult1))
+#train$num_reemb_var17_ult1 <- factor(train$num_reemb_var17_ult1)
+#predict$num_reemb_var17_ult1 <- factor(predict$num_reemb_var17_ult1,levels=levels(train$num_reemb_var17_ult1))
 
-train$num_var14_0 <- factor(train$num_var14_0)
-predict$num_var14_0 <- factor(predict$num_var14_0,levels=levels(train$num_var14_0))
+#train$num_var14_0 <- factor(train$num_var14_0)
+#predict$num_var14_0 <- factor(predict$num_var14_0,levels=levels(train$num_var14_0))
                                                                             
-train$var36 <- factor(train$var36)
-predict$var36 <- factor(predict$var36,levels=levels(train$var36))
+#train$var36 <- factor(train$var36)
+#predict$var36 <- factor(predict$var36,levels=levels(train$var36))
 
+# Good
 train$var36 <- factor(train$var36)
 predict$var36 <- factor(predict$var36,levels=levels(train$var36))
 
@@ -211,10 +246,95 @@ SantanderTest  <- train[-trainIndex,]
 table(SantanderTrain$TARGET)
 table(SantanderTest$TARGET)
 table(train$TARGET)
+nrow(predict)
 
 summary(train)
 
-####################################### Training Model
+#--------------------------------------> xgboost
+
+train.y <-SantanderTrain$TARGET
+
+SantanderTrain <- sparse.model.matrix(TARGET ~ ., data = SantanderTrain)
+
+dtrain <- xgb.DMatrix(data=SantanderTrain, label=train.y)
+watchlist <- list(SantanderTrain=dtrain)
+
+param <- list(  objective           = "binary:logistic", 
+                booster             = "gbtree",
+                eval_metric         = "auc",
+                eta                 = 0.0202048,
+                max_depth           = 5,
+                subsample           = 0.6815,
+                colsample_bytree    = 0.701
+)
+
+nround <- 560
+
+clf <- xgb.train(   params              = param, 
+                    data                = dtrain, 
+                    nrounds             = nround, 
+                    verbose             = 1,
+                    watchlist           = watchlist,
+                    maximize            = FALSE
+)
+
+test <- predict
+test$TARGET <- -1
+test <- sparse.model.matrix(TARGET ~ ., data = test)
+nrow(test)
+
+preds <- predict(clf, test)
+pred <-predict(clf,SantanderTrain)
+
+AUC<-function(actual,predicted)
+{
+  library(pROC)
+  auc<-auc(as.numeric(actual),as.numeric(predicted))
+  auc 
+}
+
+AUC(train.y,pred) ##AUC
+
+#------> CV
+
+xgb.cv(param, dtrain, nrounds=nround, nfold=5, metrics={'error'}, showsd = FALSE)
+
+# do cross validation with prediction values for each fold
+res <- xgb.cv(params = param, data = dtrain, nrounds = nround, nfold = 5, prediction = TRUE)
+res$dt
+length(res$pred)
+
+####################################### Preparing Prediction Data
+
+
+str(SantanderTrain, list.len=ncol(SantanderTrain))
+str(predict, list.len=ncol(predict))
+
+set.seed(200)
+
+
+####################################### Prediction
+
+str(SantanderTrain, list.len=ncol(SantanderTrain))
+str(predict, list.len=ncol(predict))
+
+str(sample_submission)
+colnames(predict)
+colnames(SantanderTest)
+
+probxgotest <- predict(RFmodel.rf, predict, type="prob",na.action=na.roughfix)
+probxgotest <- predict(fit.gbm, predict, type="prob",na.action=na.roughfix)
+
+final <- data.frame(ID = predict[,"ID"], TARGET = probxgotest[,"1"])
+getwd()
+
+write.csv(final, "Santander_submission_v5.csv", row.names = F)
+
+#XGBOOST
+final <- data.frame(ID = test[,"ID"], TARGET = preds)
+nrow(final)
+
+####################################### RF
 
 RFmodel.rf <- randomForest(TARGET ~ .,data = SantanderTrain,
                            importance=TRUE,
@@ -301,72 +421,22 @@ fitControl <- trainControl(
   number = 5, #10
   repeats = 1)
 
-  TuneGrid <- expand.grid(n.trees = 300,interaction.depth = 15,shrinkage = 0.01,n.minobsinnode=10)
-  #TuneGrid <- expand.grid(n.trees = 1000,interaction.depth = 30,shrinkage = 0.001,n.minobsinnode=10)
-  
-  fit.gbm <- train(TARGET ~ ., data = SantanderTrain,
-                   method = "gbm",
-                   trControl = fitControl,
-                   verbose = FALSE,
-                   weights = SantanderTrain$weights,
-                   tuneGrid = TuneGrid
-                   #,metric="ROC"
-  )
+TuneGrid <- expand.grid(n.trees = 300,interaction.depth = 15,shrinkage = 0.01,n.minobsinnode=10)
+#TuneGrid <- expand.grid(n.trees = 1000,interaction.depth = 30,shrinkage = 0.001,n.minobsinnode=10)
+
+fit.gbm <- train(TARGET ~ ., data = SantanderTrain,
+                 method = "gbm",
+                 trControl = fitControl,
+                 verbose = FALSE,
+                 weights = SantanderTrain$weights,
+                 tuneGrid = TuneGrid
+                 #,metric="ROC"
+)
 
 summary(fit.gbm)
 
-#--------------------------------------> xgboost
 
 
-train.y <-SantanderTrain$TARGET
-
-SantanderTrain <- sparse.model.matrix(TARGET ~ ., data = SantanderTrain)
-
-dtrain <- xgb.DMatrix(data=SantanderTrain, label=train.y)
-watchlist <- list(SantanderTrain=dtrain)
-
-param <- list(  objective           = "binary:logistic", 
-                booster             = "gbtree",
-                eval_metric         = "auc",
-                eta                 = 0.0202048,
-                max_depth           = 5,
-                subsample           = 0.6815,
-                colsample_bytree    = 0.701
-)
-
-clf <- xgb.train(   params              = param, 
-                    data                = dtrain, 
-                    nrounds             = 560, 
-                    verbose             = 1,
-                    watchlist           = watchlist,
-                    maximize            = FALSE
-)
-
-####################################### Preparing Prediction Data
-
-
-str(SantanderTrain, list.len=ncol(SantanderTrain))
-str(predict, list.len=ncol(predict))
-
-set.seed(200)
-
-
-####################################### Prediction
-
-str(SantanderTrain, list.len=ncol(SantanderTrain))
-str(predict, list.len=ncol(predict))
-
-str(sample_submission)
-colnames(predict)
-colnames(SantanderTest)
-
-probxgotest <- predict(RFmodel.rf, predict, type="prob",na.action=na.roughfix)
-probxgotest <- predict(fit.gbm, predict, type="prob",na.action=na.roughfix)
-
-final <- data.frame(ID = predict[,"ID"], TARGET = probxgotest[,"1"])
-getwd()
-
-write.csv(final, "Santander_submission_v4.csv", row.names = F)
 
 ####################################### Calibration
 
@@ -393,3 +463,9 @@ auctest <- performance(pred, measure = "auc")@y.values[[1]]
 
 legend("bottomright",legend=c(paste("RF (AUC=",formatC(auctest,digits=4,format="f"),")",sep="")),  
        col=c("red"), lty=1)
+
+# XGBOOST Test ROC
+test1 <- sparse.model.matrix(TARGET ~ ., data = SantanderTest)
+pred <-predict(clf,test1)
+AUC(SantanderTest$TARGET,pred) ##AUC
+
