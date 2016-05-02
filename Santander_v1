@@ -194,39 +194,71 @@ for (i in 2:dim(train)[2]){
 }
 
 # Commneted for XG
-#for (i in 2:dim(train)[2]){
-#  if(length(unique(train[,i])) == 4){
-#    print(colnames(train)[i])
-#    train[,i] <- factor(train[,i])
-#    predict[,i] <- factor(predict[,i],levels=levels(train[,i]))
-#  }
-#}
+
+for (i in 2:dim(train)[2]){
+  if(length(unique(train[,i])) == 4){
+    print(colnames(train)[i])
+    train[,i] <- factor(train[,i])
+    predict[,i] <- factor(predict[,i],levels=levels(train[,i]))
+  }
+}
 
 
-# Outlier treatment
+# Outlier treatment - works for GBM
 
+train$num_aport_var17_hace3 <- factor(train$num_aport_var17_hace3)
+predict$num_aport_var17_hace3 <- factor(predict$num_aport_var17_hace3,levels=levels(train$num_aport_var17_hace3))
 
-#train$num_aport_var17_hace3 <- factor(train$num_aport_var17_hace3)
-#predict$num_aport_var17_hace3 <- factor(predict$num_aport_var17_hace3,levels=levels(train$num_aport_var17_hace3))
+train$num_op_var40_hace3 <- factor(train$num_op_var40_hace3)
+predict$num_op_var40_hace3 <- factor(predict$num_op_var40_hace3,levels=levels(train$num_op_var40_hace3))
 
-#train$num_op_var40_hace3 <- factor(train$num_op_var40_hace3)
-#predict$num_op_var40_hace3 <- factor(predict$num_op_var40_hace3,levels=levels(train$num_op_var40_hace3))
+train$num_reemb_var17_ult1 <- factor(train$num_reemb_var17_ult1)
+predict$num_reemb_var17_ult1 <- factor(predict$num_reemb_var17_ult1,levels=levels(train$num_reemb_var17_ult1))
 
-#train$num_reemb_var17_ult1 <- factor(train$num_reemb_var17_ult1)
-#predict$num_reemb_var17_ult1 <- factor(predict$num_reemb_var17_ult1,levels=levels(train$num_reemb_var17_ult1))
-
-#train$num_var14_0 <- factor(train$num_var14_0)
-#predict$num_var14_0 <- factor(predict$num_var14_0,levels=levels(train$num_var14_0))
+train$num_var14_0 <- factor(train$num_var14_0)
+predict$num_var14_0 <- factor(predict$num_var14_0,levels=levels(train$num_var14_0))
                                                                             
-#train$var36 <- factor(train$var36)
-#predict$var36 <- factor(predict$var36,levels=levels(train$var36))
-
-# Good
 train$var36 <- factor(train$var36)
 predict$var36 <- factor(predict$var36,levels=levels(train$var36))
 
+# Good
+# Var transformation
+summary(as.factor(train$num_meses_var5_ult3))
+hist(train$num_meses_var5_ult3)
+hist(log(train$num_meses_var5_ult3))
+hist(rnorm(train$num_meses_var5_ult3))
+
+train$var36 <- factor(train$var36)
+predict$var36 <- factor(predict$var36,levels=levels(train$var36))
+
+#temp1 <- train
+#temp2 <- predict
+#train <- temp1
+#predict <- temp2
+
+train$num_var42 <- factor(train$num_var42)
+predict$num_var42 <- factor(predict$num_var42,levels=levels(train$num_var42))
+
+# Only for GBM
+train$num_var5 <- factor(train$num_var5)
+predict$num_var5 <- factor(predict$num_var5,levels=levels(train$num_var5))
+
+train$num_meses_var5_ult3 <- factor(train$num_meses_var5_ult3)
+predict$num_meses_var5_ult3 <- factor(predict$num_meses_var5_ult3,levels=levels(train$num_meses_var5_ult3))
+
 train$var38 <- log(train$var38)
 predict$var38 <- log(predict$var38)
+
+train$var15 <- log(train$var15)
+predict$var15 <- log(predict$var15)
+
+##### 0 count per line
+count0 <- function(x) {
+  return( sum(x == 0) )
+}
+
+train$n0 <- apply(train, 1, FUN=count0)
+predict$n0 <- apply(predict, 1, FUN=count0)
 
 
 ## set the seed to make your partition reproductible
@@ -268,8 +300,16 @@ param <- list(  objective           = "binary:logistic",
                 colsample_bytree    = 0.701
 )
 
-nround <- 560
+#CV
+#xgb.cv(param, dtrain, nrounds=nround, nfold=5, metrics={'error'}, showsd = FALSE)
+# do cross validation with prediction values for each fold
+nround <- 600
+res <- xgb.cv(params = param, data = dtrain, nrounds = nround, nfold = 5, prediction = TRUE)
+res$dt
+length(res$pred)
 
+# Select based on CV
+nround <- 420
 clf <- xgb.train(   params              = param, 
                     data                = dtrain, 
                     nrounds             = nround, 
@@ -295,14 +335,6 @@ AUC<-function(actual,predicted)
 
 AUC(train.y,pred) ##AUC
 
-#------> CV
-
-xgb.cv(param, dtrain, nrounds=nround, nfold=5, metrics={'error'}, showsd = FALSE)
-
-# do cross validation with prediction values for each fold
-res <- xgb.cv(params = param, data = dtrain, nrounds = nround, nfold = 5, prediction = TRUE)
-res$dt
-length(res$pred)
 
 ####################################### Preparing Prediction Data
 
@@ -328,7 +360,7 @@ probxgotest <- predict(fit.gbm, predict, type="prob",na.action=na.roughfix)
 final <- data.frame(ID = predict[,"ID"], TARGET = probxgotest[,"1"])
 getwd()
 
-write.csv(final, "Santander_submission_v5.csv", row.names = F)
+write.csv(final, "Santander_submission_v7.csv", row.names = F)
 
 #XGBOOST
 final <- data.frame(ID = test[,"ID"], TARGET = preds)
@@ -421,8 +453,8 @@ fitControl <- trainControl(
   number = 5, #10
   repeats = 1)
 
+#TuneGrid <- expand.grid(n.trees = c(250,300),interaction.depth = 8:10,shrinkage = 0.01,n.minobsinnode=10)
 TuneGrid <- expand.grid(n.trees = 300,interaction.depth = 15,shrinkage = 0.01,n.minobsinnode=10)
-#TuneGrid <- expand.grid(n.trees = 1000,interaction.depth = 30,shrinkage = 0.001,n.minobsinnode=10)
 
 fit.gbm <- train(TARGET ~ ., data = SantanderTrain,
                  method = "gbm",
@@ -434,9 +466,6 @@ fit.gbm <- train(TARGET ~ ., data = SantanderTrain,
 )
 
 summary(fit.gbm)
-
-
-
 
 ####################################### Calibration
 
